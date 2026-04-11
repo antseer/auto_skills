@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>资金费率 vs 预测市场赔率监控器</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #a855f7;
+    --primary-dim: rgba(168, 85, 247, 0.12);
+    --primary-glow: rgba(168, 85, 247, 0.35);
+    --bg: #050a15;
+    --surface: rgba(255,255,255,0.04);
+    --border: rgba(168, 85, 247, 0.22);
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --green: #10b981;
+    --gray: #6b7280;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse 70% 55% at 20% 15%, rgba(168,85,247,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 55% 45% at 82% 75%, rgba(100,40,180,0.06) 0%, transparent 55%),
+      linear-gradient(rgba(168,85,247,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(168,85,247,0.025) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 56px;
+    background: rgba(5,10,21,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav a {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: opacity 0.2s;
+  }
+  nav a:hover { opacity: 0.75; }
+  .nav-title {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* LAYOUT */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 88px 2rem 4rem;
+  }
+
+  /* HERO */
+  .hero {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    animation: fadeInUp 0.6s ease both;
+  }
+  .hero-title {
+    font-size: clamp(1.9rem, 4.5vw, 3.1rem);
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary) 0%, #ffffff 65%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.15;
+    margin-bottom: 0.6rem;
+    letter-spacing: -0.02em;
+  }
+  .hero-sub {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    margin-bottom: 1.4rem;
+    letter-spacing: 0.04em;
+  }
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  .badge {
+    padding: 0.3rem 0.85rem;
+    border-radius: 100px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: var(--primary-dim);
+    color: var(--primary);
+    border: 1px solid var(--border);
+    letter-spacing: 0.03em;
+  }
+
+  /* SECTION */
+  section {
+    margin-bottom: 2.5rem;
+    animation: fadeInUp 0.6s ease both;
+  }
+  section:nth-child(2) { animation-delay: 0.1s; }
+  section:nth-child(3) { animation-delay: 0.15s; }
+  section:nth-child(4) { animation-delay: 0.2s; }
+  section:nth-child(5) { animation-delay: 0.25s; }
+  section:nth-child(6) { animation-delay: 0.3s; }
+  section:nth-child(7) { animation-delay: 0.35s; }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* GLASS CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+  }
+  .card-accent {
+    border-left: 3px solid var(--primary);
+    box-shadow: inset 0 0 30px rgba(168,85,247,0.03);
+  }
+  .overview-text {
+    font-size: 0.97rem;
+    color: var(--text);
+    line-height: 1.8;
+  }
+
+  /* PERSONAS */
+  .personas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.2rem;
+  }
+  .persona-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .persona-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 20px var(--primary-glow);
+  }
+  .persona-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), rgba(80,20,160,0.9));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 0 15px var(--primary-glow);
+  }
+  .persona-name { font-size: 1rem; font-weight: 700; color: #fff; }
+  .persona-role { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.9rem;
+  }
+  .tool-tag {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(168,85,247,0.08);
+    color: var(--primary);
+    border: 1px solid rgba(168,85,247,0.2);
+  }
+  .pain-point {
+    font-size: 0.83rem;
+    color: #94a3b8;
+    line-height: 1.6;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding-top: 0.75rem;
+  }
+  .pain-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #f59e0b;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  thead tr { background: rgba(168,85,247,0.07); }
+  th {
+    padding: 0.85rem 1.1rem;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary);
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.85rem 1.1rem;
+    color: var(--text);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    vertical-align: top;
+  }
+  tbody tr { transition: background 0.2s, box-shadow 0.2s; }
+  tbody tr:hover {
+    background: rgba(168,85,247,0.05);
+    box-shadow: inset 0 0 0 1px rgba(168,85,247,0.15);
+  }
+
+  /* SCENARIO NOTE */
+  .scenario-note {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-style: italic;
+    padding: 0.1rem 0;
+  }
+
+  /* STORIES */
+  .stories { display: flex; flex-direction: column; gap: 1rem; }
+  .story-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    display: flex;
+    gap: 1.1rem;
+    align-items: flex-start;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .story-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(168,85,247,0.12);
+  }
+  .story-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-dim);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+  .story-text { font-size: 0.9rem; color: var(--text); line-height: 1.7; }
+  .story-text strong { color: var(--primary); }
+
+  /* SCOPE */
+  .scope-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+  }
+  @media (max-width: 600px) { .scope-grid { grid-template-columns: 1fr; } }
+  .scope-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.3rem;
+    backdrop-filter: blur(10px);
+  }
+  .scope-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.9rem;
+  }
+  .scope-title.inc { color: var(--green); }
+  .scope-title.exc { color: var(--gray); }
+  .scope-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.875rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    line-height: 1.5;
+  }
+  .scope-item:last-child { border-bottom: none; }
+  .scope-icon { flex-shrink: 0; font-size: 0.85rem; margin-top: 0.1rem; }
+  .scope-item.inc-item { color: #cbd5e1; }
+  .scope-item.exc-item { color: var(--text-muted); }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">&#8592; 返回首页</a>
+  <span class="nav-title">Funding Rate vs Prediction Market Odds</span>
+</nav>
+
+<main>
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-title">资金费率 vs 预测市场赔率监控器</div>
+    <div class="hero-sub">Funding Rate vs Prediction Market Odds</div>
+    <div class="badges">
+      <span class="badge">背离检测</span>
+      <span class="badge">衍生品</span>
+      <span class="badge">预测市场</span>
+    </div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <section>
+    <div class="section-label">概述</div>
+    <div class="card card-accent">
+      <p class="overview-text">
+        在用户进入杠杆加密仓位前，需要一个工具将永续合约资金费率（Binance、Bybit、dYdX）与预测市场事件赔率（Polymarket、Kalshi）叠加对比，自动检测两者之间的背离。目前这两类数据分别存在于不同的浏览器标签页中，交易者因为串行处理这些信号而遭受了实际亏损——检查标签页一和标签页二之间的时间差恰恰是最大回撤发生的地方。
+      </p>
+    </div>
+  </section>
+
+  <!-- PERSONAS -->
+  <section>
+    <div class="section-label">用户画像</div>
+    <div class="personas-grid">
+      <div class="persona-card">
+        <div class="persona-header">
+          <div class="avatar">C</div>
+          <div>
+            <div class="persona-name">Carol</div>
+            <div class="persona-role">全栈 SaaS 开发者 / 跨资产交易者</div>
+          </div>
+        </div>
+        <div class="tools">
+          <span class="tool-tag">Next.js</span>
+          <span class="tool-tag">Supabase</span>
+          <span class="tool-tag">TypeScript</span>
+          <span class="tool-tag">Binance</span>
+          <span class="tool-tag">CoinGlass</span>
+          <span class="tool-tag">Polymarket</span>
+        </div>
+        <div class="pain-point">
+          <div class="pain-label">痛点</div>
+          交易 MSTR 和 BTC，跨股票和加密现货。因仅基于资金费率做多 MSTR 而亏损 4%+，错过 Polymarket 鹰派赔率从 35% 飙升至 62% 的关键信号。
+        </div>
+      </div>
+
+      <div class="persona-card">
+        <div class="persona-header">
+          <div class="avatar">A</div>
+          <div>
+            <div class="persona-name">Alice</div>
+            <div class="persona-role">DeFi 全栈独立开发者 / 链上分析师</div>
+          </div>
+        </div>
+        <div class="tools">
+          <span class="tool-tag">Solidity</span>
+          <span class="tool-tag">TypeScript</span>
+          <span class="tool-tag">Python</span>
+          <span class="tool-tag">Dune Analytics</span>
+          <span class="tool-tag">Arkham</span>
+          <span class="tool-tag">CoinGlass</span>
+        </div>
+        <div class="pain-point">
+          <div class="pain-label">痛点</div>
+          写 Solidity 合约，做链上数据分析，维护跨链数据管道。已程序化监控资金费率，但缺乏将预测市场赔率纳入同一分析层的工具。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENARIOS -->
+  <section>
+    <div class="section-label">使用场景</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>场景</th>
+            <th>触发条件</th>
+            <th>期望输出</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>MSTR 盘前做多</td>
+            <td>Carol：资金费率正向但 Polymarket 鹰派赔率隔夜跳升</td>
+            <td>背离警报：资金费率看多但事件赔率鹰派转向 +27pp</td>
+          </tr>
+          <tr>
+            <td>3月28日降息恐慌</td>
+            <td>Alice：资金费率 -0.03% 散户看空</td>
+            <td>一致信号：资金费率和赔率均偏空</td>
+          </tr>
+          <tr>
+            <td>FOMC 后动量交易</td>
+            <td>Carol：考虑重新入场</td>
+            <td>警告：资金费率正常化但远期事件赔率倾向鹰派</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- USER STORIES -->
+  <section>
+    <div class="section-label">用户故事</div>
+    <div class="stories">
+      <div class="story-card">
+        <div class="story-num">1</div>
+        <div class="story-text">
+          <strong>As Carol</strong>，我想在进入仓位前并排看到资金费率和宏观事件赔率，so that 不会被衍生品市场忽略的宏观催化剂打个措手不及。
+        </div>
+      </div>
+      <div class="story-card">
+        <div class="story-num">2</div>
+        <div class="story-text">
+          <strong>As Alice</strong>，我想获得衍生品持仓和事件概率之间的结构化背离信号，so that 将其纳入鲸鱼资金流分析管道作为额外上下文层。
+        </div>
+      </div>
+      <div class="story-card">
+        <div class="story-num">3</div>
+        <div class="story-text">
+          <strong>As 加密交易者在美股开盘前检查仓位</strong>，我想知道隔夜资金费率变动是否与即将到来的宏观事件的预测市场赔率一致，so that 决定动量交易是否可以安全持有或需要对冲。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCOPE -->
+  <section>
+    <div class="section-label">需求边界</div>
+    <div class="scope-grid">
+      <div class="scope-col">
+        <div class="scope-title inc">包含功能</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>永续合约资金费率叠加预测市场赔率</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>量化背离分数与体制标签</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>时间敏感性评估（距催化事件天数）</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>资金费率极端值标注</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>识别哪一方可能定价错误</div>
+      </div>
+      <div class="scope-col">
+        <div class="scope-title exc">不包含功能</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>不预测价格方向</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>不在单信号时触发</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>不提供仓位大小建议</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>不替代深度宏观研究</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+</body>
+</html>

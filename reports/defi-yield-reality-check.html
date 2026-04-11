@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DeFi 资金池真实净收益率拆解器</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #ff9500;
+    --primary-dim: rgba(255, 149, 0, 0.12);
+    --primary-glow: rgba(255, 149, 0, 0.35);
+    --bg: #050a15;
+    --surface: rgba(255,255,255,0.04);
+    --border: rgba(255, 149, 0, 0.22);
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --green: #10b981;
+    --gray: #6b7280;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse 75% 55% at 10% 20%, rgba(255,149,0,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 88% 70%, rgba(200,80,0,0.05) 0%, transparent 55%),
+      linear-gradient(rgba(255,149,0,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,149,0,0.025) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+    color: var(--text);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 56px;
+    background: rgba(5,10,21,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav a {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: opacity 0.2s;
+  }
+  nav a:hover { opacity: 0.75; }
+  .nav-title {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* LAYOUT */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 88px 2rem 4rem;
+  }
+
+  /* HERO */
+  .hero {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    animation: fadeInUp 0.6s ease both;
+  }
+  .hero-title {
+    font-size: clamp(1.9rem, 4.5vw, 3.1rem);
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary) 0%, #ffffff 65%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.15;
+    margin-bottom: 0.6rem;
+    letter-spacing: -0.02em;
+  }
+  .hero-sub {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    margin-bottom: 1.4rem;
+    letter-spacing: 0.04em;
+  }
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  .badge {
+    padding: 0.3rem 0.85rem;
+    border-radius: 100px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: var(--primary-dim);
+    color: var(--primary);
+    border: 1px solid var(--border);
+    letter-spacing: 0.03em;
+  }
+
+  /* SECTION */
+  section {
+    margin-bottom: 2.5rem;
+    animation: fadeInUp 0.6s ease both;
+  }
+  section:nth-child(2) { animation-delay: 0.1s; }
+  section:nth-child(3) { animation-delay: 0.15s; }
+  section:nth-child(4) { animation-delay: 0.2s; }
+  section:nth-child(5) { animation-delay: 0.25s; }
+  section:nth-child(6) { animation-delay: 0.3s; }
+  section:nth-child(7) { animation-delay: 0.35s; }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* GLASS CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+  }
+  .card-accent {
+    border-left: 3px solid var(--primary);
+    box-shadow: inset 0 0 30px rgba(255,149,0,0.03);
+  }
+  .overview-text {
+    font-size: 0.97rem;
+    color: var(--text);
+    line-height: 1.8;
+  }
+
+  /* PERSONAS */
+  .personas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.2rem;
+  }
+  .persona-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .persona-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 20px var(--primary-glow);
+  }
+  .persona-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), rgba(160,70,0,0.9));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #050a15;
+    flex-shrink: 0;
+    box-shadow: 0 0 15px var(--primary-glow);
+  }
+  .persona-name { font-size: 1rem; font-weight: 700; color: #fff; }
+  .persona-role { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.9rem;
+  }
+  .tool-tag {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(255,149,0,0.08);
+    color: var(--primary);
+    border: 1px solid rgba(255,149,0,0.2);
+  }
+  .pain-point {
+    font-size: 0.83rem;
+    color: #94a3b8;
+    line-height: 1.6;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding-top: 0.75rem;
+  }
+  .pain-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #f59e0b;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  thead tr { background: rgba(255,149,0,0.07); }
+  th {
+    padding: 0.85rem 1.1rem;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary);
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.85rem 1.1rem;
+    color: var(--text);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    vertical-align: top;
+  }
+  tbody tr { transition: background 0.2s, box-shadow 0.2s; }
+  tbody tr:hover {
+    background: rgba(255,149,0,0.05);
+    box-shadow: inset 0 0 0 1px rgba(255,149,0,0.15);
+  }
+
+  /* STORIES */
+  .stories { display: flex; flex-direction: column; gap: 1rem; }
+  .story-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    display: flex;
+    gap: 1.1rem;
+    align-items: flex-start;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .story-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(255,149,0,0.12);
+  }
+  .story-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-dim);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+  .story-text { font-size: 0.9rem; color: var(--text); line-height: 1.7; }
+  .story-text strong { color: var(--primary); }
+
+  /* SCOPE */
+  .scope-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+  }
+  @media (max-width: 600px) { .scope-grid { grid-template-columns: 1fr; } }
+  .scope-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.3rem;
+    backdrop-filter: blur(10px);
+  }
+  .scope-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.9rem;
+  }
+  .scope-title.inc { color: var(--green); }
+  .scope-title.exc { color: var(--gray); }
+  .scope-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.875rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    line-height: 1.5;
+  }
+  .scope-item:last-child { border-bottom: none; }
+  .scope-icon { flex-shrink: 0; font-size: 0.85rem; margin-top: 0.1rem; }
+  .scope-item.inc-item { color: #cbd5e1; }
+  .scope-item.exc-item { color: var(--text-muted); }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">&#8592; 返回首页</a>
+  <span class="nav-title">DeFi Yield Reality Check</span>
+</nav>
+
+<main>
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-title">DeFi 资金池真实净收益率拆解器</div>
+    <div class="hero-sub">DeFi Yield Reality Check</div>
+    <div class="badges">
+      <span class="badge">APY拆解</span>
+      <span class="badge">净收益率</span>
+      <span class="badge">无常损失</span>
+    </div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <section>
+    <div class="section-label">概述</div>
+    <div class="card card-accent">
+      <p class="overview-text">
+        DeFi 协议普遍以聚合 APY 作为营销数字，但表面 APY 与用户实际可获得的净收益之间存在系统性偏差。常见陷阱包括：代币激励占 APY 60%+ 且代币正在通胀稀释、无常损失在波动市中吞掉大部分收益、Gas 费累计侵蚀小额头寸的回报。用户每次拆解一个池子需 2-3 小时手动计算。需要一个自动拆解表面 APY 为各组成部分，估算隐性成本，输出风险调整后的净收益率评估工具。
+      </p>
+    </div>
+  </section>
+
+  <!-- PERSONAS -->
+  <section>
+    <div class="section-label">用户画像</div>
+    <div class="personas-grid">
+      <div class="persona-card">
+        <div class="persona-header">
+          <div class="avatar">C</div>
+          <div>
+            <div class="persona-name">Carol</div>
+            <div class="persona-role">DeFi 收益策略研究员</div>
+          </div>
+        </div>
+        <div class="tools">
+          <span class="tool-tag">Python</span>
+          <span class="tool-tag">Dune Analytics</span>
+          <span class="tool-tag">DefiLlama API</span>
+          <span class="tool-tag">Claude Code</span>
+          <span class="tool-tag">Jupyter Notebook</span>
+        </div>
+        <div class="pain-point">
+          <div class="pain-label">痛点</div>
+          全职 DeFi 分析师，每天评估多个协议的收益策略。差点推荐 Arbitrum 上宣称 85% APY 的池子，3 小时分析后发现真实净年化仅约 7%。
+        </div>
+      </div>
+
+      <div class="persona-card">
+        <div class="persona-header">
+          <div class="avatar">S</div>
+          <div>
+            <div class="persona-name">链上数据散户</div>
+            <div class="persona-role">持仓驱动型散户投资者</div>
+          </div>
+        </div>
+        <div class="tools">
+          <span class="tool-tag">Glassnode</span>
+          <span class="tool-tag">Dune Analytics</span>
+          <span class="tool-tag">Claude Code</span>
+          <span class="tool-tag">Excel</span>
+        </div>
+        <div class="pain-point">
+          <div class="pain-label">痛点</div>
+          因看到 DePIN 项目月收入 $500K 而买入代币，后发现 80% 是代币激励而非真实用户付费，实际收益大幅缩水。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENARIOS -->
+  <section>
+    <div class="section-label">使用场景</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>场景</th>
+            <th>触发条件</th>
+            <th>期望输出</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>高 APY 宣传验证</td>
+            <td>看到 DeFi 协议或资金池的高 APY 宣传</td>
+            <td>APY 完整组成拆解 + 风险调整后净收益率</td>
+          </tr>
+          <tr>
+            <td>多协议收益率对比</td>
+            <td>需要选择最优 DeFi 收益策略</td>
+            <td>同赛道协议的净 APY 对比表</td>
+          </tr>
+          <tr>
+            <td>DePIN 收入验证</td>
+            <td>DePIN 项目声称高收入</td>
+            <td>"真实用户付费 vs 代币激励"比例分析</td>
+          </tr>
+          <tr>
+            <td>已投头寸回报评估</td>
+            <td>定期评估已投入的 DeFi 头寸</td>
+            <td>当前实际回报 vs 宣传回报对比</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- USER STORIES -->
+  <section>
+    <div class="section-label">用户故事</div>
+    <div class="stories">
+      <div class="story-card">
+        <div class="story-num">1</div>
+        <div class="story-text">
+          <strong>As Carol</strong>，我想输入 DeFi 资金池地址后自动获取 APY 的完整组成拆解（基础交易费、代币激励、借贷利息）及各项隐性成本，so that 我能在 10 分钟内判断一个池子的真实净收益率而非花 3 小时手动计算。
+        </div>
+      </div>
+      <div class="story-card">
+        <div class="story-num">2</div>
+        <div class="story-text">
+          <strong>As 散户投资者</strong>，我想在看到高收益宣传时能一键查看"宣传 APY vs 真实净 APY"的对比，so that 我不再因表面数字误导而做出亏损投资。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCOPE -->
+  <section>
+    <div class="section-label">需求边界</div>
+    <div class="scope-grid">
+      <div class="scope-col">
+        <div class="scope-title inc">包含功能</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>APY 组成拆解（基础交易费 / 代币激励 / 借贷利息）</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>代币激励稀释风险评估</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>无常损失估算（基于波动率指标）</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>Gas 成本估算</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>同赛道协议对比</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>风险调整后净 APY 计算</div>
+      </div>
+      <div class="scope-col">
+        <div class="scope-title exc">不包含功能</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>非 AMM 类 DeFi 协议拆解逻辑</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>池级 APY 组件实时数据</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>投资建议</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+</body>
+</html>

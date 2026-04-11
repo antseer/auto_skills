@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>标题 vs 现实仪表盘</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #ff4757;
+    --primary-dim: rgba(255, 71, 87, 0.15);
+    --primary-glow: rgba(255, 71, 87, 0.4);
+    --bg: #050a15;
+    --surface: rgba(255,255,255,0.04);
+    --surface-hover: rgba(255,255,255,0.07);
+    --border: rgba(255, 71, 87, 0.25);
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --green: #10b981;
+    --red: #6b7280;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(ellipse 80% 60% at 20% 10%, rgba(255,71,87,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 50% at 80% 80%, rgba(200,30,60,0.06) 0%, transparent 55%),
+      linear-gradient(rgba(255,71,87,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,71,87,0.03) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    height: 56px;
+    background: rgba(5,10,21,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  nav a {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: opacity 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  nav a:hover { opacity: 0.75; }
+  .nav-title {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* LAYOUT */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 88px 2rem 4rem;
+  }
+
+  /* HERO */
+  .hero {
+    text-align: center;
+    padding: 3rem 0 2.5rem;
+    animation: fadeInUp 0.6s ease both;
+  }
+  .hero-title {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary) 0%, #ffffff 60%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.15;
+    margin-bottom: 0.6rem;
+    letter-spacing: -0.02em;
+  }
+  .hero-sub {
+    font-size: 1.05rem;
+    color: var(--text-muted);
+    margin-bottom: 1.4rem;
+    letter-spacing: 0.04em;
+  }
+  .badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+  }
+  .badge {
+    padding: 0.3rem 0.85rem;
+    border-radius: 100px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: var(--primary-dim);
+    color: var(--primary);
+    border: 1px solid var(--border);
+    letter-spacing: 0.03em;
+  }
+
+  /* SECTION */
+  section {
+    margin-bottom: 2.5rem;
+    animation: fadeInUp 0.6s ease both;
+  }
+  section:nth-child(2) { animation-delay: 0.1s; }
+  section:nth-child(3) { animation-delay: 0.15s; }
+  section:nth-child(4) { animation-delay: 0.2s; }
+  section:nth-child(5) { animation-delay: 0.25s; }
+  section:nth-child(6) { animation-delay: 0.3s; }
+  section:nth-child(7) { animation-delay: 0.35s; }
+
+  .section-label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .section-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* GLASS CARD */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    backdrop-filter: blur(10px);
+  }
+  .card-accent {
+    border-left: 3px solid var(--primary);
+    box-shadow: inset 0 0 30px rgba(255,71,87,0.03);
+  }
+
+  /* OVERVIEW */
+  .overview-text {
+    font-size: 0.97rem;
+    color: var(--text);
+    line-height: 1.8;
+  }
+
+  /* PERSONAS */
+  .personas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.2rem;
+  }
+  .persona-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.4rem;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .persona-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 20px var(--primary-glow);
+  }
+  .persona-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  .avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), rgba(180,20,40,0.8));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    box-shadow: 0 0 15px var(--primary-glow);
+  }
+  .persona-name { font-size: 1rem; font-weight: 700; color: #fff; }
+  .persona-role { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.15rem; }
+  .tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-bottom: 0.9rem;
+  }
+  .tool-tag {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    background: rgba(255,71,87,0.08);
+    color: var(--primary);
+    border: 1px solid rgba(255,71,87,0.2);
+  }
+  .pain-point {
+    font-size: 0.83rem;
+    color: #94a3b8;
+    line-height: 1.6;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    padding-top: 0.75rem;
+  }
+  .pain-label {
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #f59e0b;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 0.3rem;
+  }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+  }
+  thead tr {
+    background: rgba(255,71,87,0.08);
+  }
+  th {
+    padding: 0.85rem 1.1rem;
+    text-align: left;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--primary);
+    white-space: nowrap;
+  }
+  td {
+    padding: 0.85rem 1.1rem;
+    color: var(--text);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    vertical-align: top;
+  }
+  tbody tr {
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  tbody tr:hover {
+    background: rgba(255,71,87,0.05);
+    box-shadow: inset 0 0 0 1px rgba(255,71,87,0.15);
+  }
+
+  /* STORIES */
+  .stories { display: flex; flex-direction: column; gap: 1rem; }
+  .story-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    display: flex;
+    gap: 1.1rem;
+    align-items: flex-start;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .story-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 0 15px rgba(255,71,87,0.15);
+  }
+  .story-num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-dim);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--primary);
+    flex-shrink: 0;
+  }
+  .story-text { font-size: 0.9rem; color: var(--text); line-height: 1.7; }
+  .story-text strong { color: var(--primary); }
+
+  /* SCOPE */
+  .scope-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+  }
+  @media (max-width: 600px) { .scope-grid { grid-template-columns: 1fr; } }
+  .scope-col {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.3rem;
+    backdrop-filter: blur(10px);
+  }
+  .scope-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 0.9rem;
+  }
+  .scope-title.inc { color: var(--green); }
+  .scope-title.exc { color: var(--red); }
+  .scope-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.875rem;
+    padding: 0.45rem 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    line-height: 1.5;
+  }
+  .scope-item:last-child { border-bottom: none; }
+  .scope-icon { flex-shrink: 0; font-size: 0.85rem; margin-top: 0.1rem; }
+  .scope-item.inc-item { color: #cbd5e1; }
+  .scope-item.exc-item { color: var(--text-muted); }
+
+  /* ANIMATIONS */
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <a href="index.html">&#8592; 返回首页</a>
+  <span class="nav-title">Headline vs Reality Dashboard</span>
+</nav>
+
+<main>
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-title">标题 vs 现实仪表盘</div>
+    <div class="hero-sub">Headline vs Reality Dashboard</div>
+    <div class="badges">
+      <span class="badge">恐慌过滤</span>
+      <span class="badge">机构信号</span>
+      <span class="badge">散户保护</span>
+    </div>
+  </div>
+
+  <!-- OVERVIEW -->
+  <section>
+    <div class="section-label">概述</div>
+    <div class="card card-accent">
+      <p class="overview-text">
+        当恐慌性市场标题出现在主流新闻中时，小额投资者需要一个快速的事实核查工具，30 秒内展示标题叙事 vs 机构买家实际行为的对比，附带简单的持有/等待/谨慎信号。目前散户投资者（如 Dave）在标题驱动的恐慌中要么花 45 分钟焦虑刷 Reddit，要么在最差时点恐慌卖出——而正确的做法通常是"什么都不做"，但他们没有快速方式得出这个结论。
+      </p>
+    </div>
+  </section>
+
+  <!-- PERSONAS -->
+  <section>
+    <div class="section-label">用户画像</div>
+    <div class="personas-grid">
+      <div class="persona-card">
+        <div class="persona-header">
+          <div class="avatar">D</div>
+          <div>
+            <div class="persona-name">Dave</div>
+            <div class="persona-role">加密新手 / 学习型用户</div>
+          </div>
+        </div>
+        <div class="tools">
+          <span class="tool-tag">Cash App</span>
+          <span class="tool-tag">Reddit</span>
+          <span class="tool-tag">YouTube</span>
+          <span class="tool-tag">Google</span>
+          <span class="tool-tag">Claude Code</span>
+        </div>
+        <div class="pain-point">
+          <div class="pain-label">痛点</div>
+          持有约 $300-400 BTC（Cash App）和少量股票的小额投资者。没有快速方式区分真正危险和标题噪音。看到 CNBC 说 "Crypto selloff deepens" 时花了 45 分钟刷 Reddit，差点恐慌卖出。
+        </div>
+      </div>
+
+      <div class="persona-card">
+        <div class="persona-header">
+          <div class="avatar">B</div>
+          <div>
+            <div class="persona-name">Bob</div>
+            <div class="persona-role">散户交易者 / 业余量化</div>
+          </div>
+        </div>
+        <div class="tools">
+          <span class="tool-tag">Python</span>
+          <span class="tool-tag">Pine Script</span>
+          <span class="tool-tag">TradingView</span>
+          <span class="tool-tag">Google Sheets</span>
+          <span class="tool-tag">Substack</span>
+          <span class="tool-tag">Claude Code</span>
+        </div>
+        <div class="pain-point">
+          <div class="pain-label">痛点</div>
+          持有 20-30 只跨科技、金融、REITs 和小额加密配置的股票组合。Strategy 宣布以 $67,718 购入 $330M BTC 时，两天后才注意到，机构信念信号被散户恐慌淹没。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCENARIOS -->
+  <section>
+    <div class="section-label">使用场景</div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>场景</th>
+            <th>触发条件</th>
+            <th>当前痛点</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>午餐时间恐慌标题</td>
+            <td>Dave：CNBC 推送 "Crypto selloff deepens"，BTC 下跌 6%</td>
+            <td>花 45 分钟刷矛盾的 Reddit 帖子，险些恐慌卖出 $300 BTC</td>
+          </tr>
+          <tr>
+            <td>社交媒体崩盘预测</td>
+            <td>Dave：Crypto Twitter 说 "BTC 到 $40K"，很害怕</td>
+            <td>搜索 5 个网站得到 5 个不同答案，1 小时困惑研究</td>
+          </tr>
+          <tr>
+            <td>Strategy 机构购入信号</td>
+            <td>Bob：Strategy 宣布购入 $330M BTC，恐惧贪婪指数 22</td>
+            <td>两天后才看到，BTC 已反弹 4%，错过入场</td>
+          </tr>
+          <tr>
+            <td>FOMC 纪要矛盾观点</td>
+            <td>Bob：三份新闻简报发出矛盾观点</td>
+            <td>花整晚建 Google Sheets 对比，减持 REIT 太迟</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- USER STORIES -->
+  <section>
+    <div class="section-label">用户故事</div>
+    <div class="stories">
+      <div class="story-card">
+        <div class="story-num">1</div>
+        <div class="story-text">
+          <strong>As Dave</strong>，当恐慌标题出现且 BTC 在 Cash App 显示红色时，我想一眼看到大型机构买家是在买入还是卖出，so that 30 秒内决定是持有还是担忧，不花 45 分钟在 Reddit 上刷。
+        </div>
+      </div>
+      <div class="story-card">
+        <div class="story-num">2</div>
+        <div class="story-text">
+          <strong>As Dave</strong>，当社交媒体充满崩盘预测时，我想看到类似 "10 个大买家中有 7 个在积累，散户恐惧度 85%" 的简单分数，so that 10 秒内理解原本需要 1 小时困惑搜索的信息。
+        </div>
+      </div>
+      <div class="story-card">
+        <div class="story-num">3</div>
+        <div class="story-text">
+          <strong>As Bob</strong>，当重大宏观标题发布时，我想立即看到标题叙事旁边的机构信念端故事，so that 不错过被散户恐慌噪音淹没的机构买入行为体制变化。
+        </div>
+      </div>
+      <div class="story-card">
+        <div class="story-num">4</div>
+        <div class="story-text">
+          <strong>As Bob</strong>，当恐惧贪婪指数低于 30 且标题一致负面时，我想知道已披露的机构买家是否在低于成本基础的价格积累，so that 识别背离驱动的入场机会。
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SCOPE -->
+  <section>
+    <div class="section-label">需求边界</div>
+    <div class="scope-grid">
+      <div class="scope-col">
+        <div class="scope-title inc">包含功能</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>对比标题叙事 vs 机构买家实际行为</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>产出简单的持有/等待/谨慎信号</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>用通俗语言输出，零金融术语</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>根据用户持仓规模校准建议</div>
+        <div class="scope-item inc-item"><span class="scope-icon">✓</span>30 秒可读的简洁输出</div>
+      </div>
+      <div class="scope-col">
+        <div class="scope-title exc">不包含功能</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>不给出精确价格目标</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>不使用图表或复杂可视化</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>不要求 API 密钥或配置设置</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>不假设用户应该总是持有</div>
+        <div class="scope-item exc-item"><span class="scope-icon">✗</span>不替代深度分析工具</div>
+      </div>
+    </div>
+  </section>
+</main>
+
+</body>
+</html>

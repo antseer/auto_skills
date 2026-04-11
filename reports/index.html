@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auto Skills — PRD 可视化报告</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #050a15;
+    --surface: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+    --text: #e2e8f0;
+    --muted: #64748b;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 50px 50px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Ambient glows */
+  .glow-1 {
+    position: fixed;
+    top: -20%;
+    left: -10%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(99,102,241,0.12) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+  .glow-2 {
+    position: fixed;
+    bottom: -20%;
+    right: -10%;
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, rgba(16,185,129,0.08) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Header */
+  header {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 80px 24px 48px;
+  }
+
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 16px;
+    border-radius: 100px;
+    border: 1px solid rgba(99,102,241,0.4);
+    background: rgba(99,102,241,0.1);
+    color: #a5b4fc;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+
+  .header-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #818cf8;
+    box-shadow: 0 0 8px #818cf8;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  h1 {
+    font-size: clamp(36px, 6vw, 64px);
+    font-weight: 800;
+    background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    line-height: 1.1;
+    margin-bottom: 16px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 18px;
+    max-width: 560px;
+    margin: 0 auto 48px;
+    line-height: 1.6;
+  }
+
+  /* Stats row */
+  .stats {
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    margin-bottom: 64px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 32px;
+    font-weight: 800;
+    background: linear-gradient(135deg, #818cf8, #06b6d4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 4px;
+  }
+
+  /* Grid */
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px;
+    text-decoration: none;
+    color: inherit;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+    overflow: hidden;
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    animation: fadeInUp 0.5s ease both;
+  }
+
+  .card:nth-child(1) { animation-delay: 0.05s; }
+  .card:nth-child(2) { animation-delay: 0.10s; }
+  .card:nth-child(3) { animation-delay: 0.15s; }
+  .card:nth-child(4) { animation-delay: 0.20s; }
+  .card:nth-child(5) { animation-delay: 0.25s; }
+  .card:nth-child(6) { animation-delay: 0.30s; }
+  .card:nth-child(7) { animation-delay: 0.35s; }
+  .card:nth-child(8) { animation-delay: 0.40s; }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent-color);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
+
+  .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0 40px rgba(0,0,0,0.4), 0 0 0 1px var(--accent-color, #818cf8);
+    border-color: var(--accent-color, #818cf8);
+  }
+
+  .card:hover::before {
+    opacity: 1;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--accent-color, #818cf8);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent-color, #818cf8) 30%, transparent);
+  }
+
+  .card-arrow {
+    color: var(--muted);
+    font-size: 16px;
+    margin-top: 4px;
+    transition: transform 0.2s ease, color 0.2s ease;
+  }
+
+  .card:hover .card-arrow {
+    transform: translate(3px, -3px);
+    color: var(--accent-color, #818cf8);
+  }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #f1f5f9;
+    line-height: 1.3;
+  }
+
+  .card-en {
+    font-size: 11px;
+    color: var(--accent-color, #818cf8);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-top: 2px;
+    opacity: 0.8;
+  }
+
+  .card-desc {
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.6;
+    flex: 1;
+  }
+
+  .card-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .tag {
+    padding: 3px 10px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid var(--accent-color, #818cf8);
+    color: var(--accent-color, #818cf8);
+    background: color-mix(in srgb, var(--accent-color, #818cf8) 10%, transparent);
+    opacity: 0.8;
+  }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 12px;
+    color: var(--muted);
+    border-top: 1px solid var(--border);
+    padding-top: 14px;
+  }
+
+  .meta-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--muted);
+  }
+
+  footer {
+    text-align: center;
+    padding: 32px;
+    color: var(--muted);
+    font-size: 13px;
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="glow-1"></div>
+<div class="glow-2"></div>
+
+<header>
+  <div class="header-badge">Auto Skills · 需求文档库</div>
+  <h1>DeFi 分析工具集</h1>
+  <p class="subtitle">8 个专为加密市场设计的智能分析技能，覆盖利差监控、风险评估、宏观传导与信号背离检测。</p>
+</header>
+
+<div class="stats">
+  <div class="stat">
+    <div class="stat-value">8</div>
+    <div class="stat-label">分析技能</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">4</div>
+    <div class="stat-label">核心 Persona</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">24+</div>
+    <div class="stat-label">使用场景</div>
+  </div>
+  <div class="stat">
+    <div class="stat-value">100%</div>
+    <div class="stat-label">链上数据驱动</div>
+  </div>
+</div>
+
+<div class="grid">
+
+  <a class="card" href="cefi-defi-rate-spread-monitor.html" style="--accent-color:#00d4ff">
+    <div class="card-header">
+      <div>
+        <div class="card-icon">⚡</div>
+      </div>
+      <span class="card-arrow">↗</span>
+    </div>
+    <div>
+      <div class="card-title">CeFi-DeFi 收益率利差监控器</div>
+      <div class="card-en">CeFi-DeFi Rate Spread Monitor</div>
+    </div>
+    <p class="card-desc">实时对比 DeFi 借贷协议利率与 CeFi/TradFi 同类产品收益率，追踪 stablecoin 链上资金流向，评估套利机会与监管影响。</p>
+    <div class="card-tags">
+      <span class="tag">利率分析</span>
+      <span class="tag">套利监控</span>
+      <span class="tag">资金流向</span>
+    </div>
+    <div class="card-meta">
+      <span>2 Personas</span>
+      <div class="meta-dot"></div>
+      <span>4 场景</span>
+      <div class="meta-dot"></div>
+      <span>2 用户故事</span>
+    </div>
+  </a>
+
+  <a class="card" href="defi-protocol-health-score.html" style="--accent-color:#00ff88">
+    <div class="card-header">
+      <div>
+        <div class="card-icon">🛡</div>
+      </div>
+      <span class="card-arrow">↗</span>
+    </div>
+    <div>
+      <div class="card-title">DeFi 平台健康度综合评分器</div>
+      <div class="card-en">DeFi Protocol Health Score</div>
+    </div>
+    <p class="card-desc">通过链上资金流向、市场情绪、持仓集中度和历史异常事件分析，输出平台级别四维度健康度评分（0-100）。</p>
+    <div class="card-tags">
+      <span class="tag">风险评估</span>
+      <span class="tag">健康评分</span>
+      <span class="tag">平台安全</span>
+    </div>
+    <div class="card-meta">
+      <span>3 Personas</span>
+      <div class="meta-dot"></div>
+      <span>4 场景</span>
+      <div class="meta-dot"></div>
+      <span>3 用户故事</span>
+    </div>
+  </a>
+
+  <a class="card" href="defi-yield-reality-check.html" style="--accent-color:#ff9500">
+    <div class="card-header">
+      <div>
+        <div class="card-icon">🔬</div>
+      </div>
+      <span class="card-arrow">↗</span>
+    </div>
+    <div>
+      <div class="card-title">DeFi 资金池真实净收益率拆解器</div>
+      <div class="card-en">DeFi Yield Reality Check</div>
+    </div>
+    <p class="card-desc">自动拆解表面 APY 为基础交易费、代币激励、借贷利息各组成部分，扣除无常损失和 Gas 成本，输出风险调整后净收益率。</p>
+    <div class="card-tags">
+      <span class="tag">APY 拆解</span>
+      <span class="tag">净收益率</span>
+      <span class="tag">无常损失</span>
+    </div>
+    <div class="card-meta">
+      <span>2 Personas</span>
+      <div class="meta-dot"></div>
+      <span>4 场景</span>
+      <div class="meta-dot"></div>
+      <span>2 用户故事</span>
+    </div>
+  </a>
+
+  <a class="card" href="funding-rate-vs-prediction-odds.html" style="--accent-color:#a855f7">
+    <div class="card-header">
+      <div>
+        <div class="card-icon">📊</div>
+      </div>
+      <span class="card-arrow">↗</span>
+    </div>
+    <div>
+      <div class="card-title">资金费率 vs 预测市场赔率监控器</div>
+      <div class="card-en">Funding Rate vs Prediction Odds</div>
+    </div>
+    <p class="card-desc">将永续合约资金费率（Binance/Bybit/dYdX）与预测市场事件赔率（Polymarket/Kalshi）叠加对比，自动检测两者之间的背离信号。</p>
+    <div class="card-tags">
+      <span class="tag">背离检测</span>
+      <span class="tag">衍生品</span>
+      <span class="tag">预测市场</span>
+    </div>
+    <div class="card-meta">
+      <span>2 Personas</span>
+      <div class="meta-dot"></div>
+      <span>3 场景</span>
+      <div class="meta-dot"></div>
+      <span>4 用户故事</span>
+    </div>
+  </a>
+
+  <a class="card" href="headline-vs-reality.html" style="--accent-color:#ff4757">
+    <div class="card-header">
+      <div>
+        <div class="card-icon">📰</div>
+      </div>
+      <span class="card-arrow">↗</span>
+    </div>
+    <div>
+      <div class="card-title">标题 vs 现实仪表盘</div>
+      <div class="card-en">Headline vs Reality Dashboard</div>
+    </div>
+    <p class="card-desc">30 秒内展示恐慌性市场标题叙事 vs 机构买家实际行为的对比，附带通俗易懂的持有/等待/谨慎信号，专为散户投资者设计。</p>
+    <div class="card-tags">
+      <span class="tag">恐慌过滤</span>
+      <span class="tag">机构信号</span>
+      <span class="tag">散户保护</span>
+    </div>
+    <div class="card-meta">
+      <span>2 Personas</span>
+      <div class="meta-dot"></div>
+      <span>4 场景</span>
+      <div class="meta-dot"></div>
+      <span>4 用户故事</span>
+    </div>
+  </a>
+
+  <a class="card" href="macro-defi-impact-assessor.html" style="--accent-color:#3b82f6">
+    <div class="card-header">
+      <div>
+        <div class="card-icon">🌐</div>
+      </div>
+      <span class="card-arrow">↗</span>
+    </div>
+    <div>
+      <div class="card-title">宏观事件→DeFi 影响传导链评估器</div>
+      <div class="card-en">Macro-DeFi Impact Assessor</div>
+    </div>
+    <p class="card-desc">自动构建从地缘政治/宏观事件到链上 DeFi 数据的多层传导链，15 分钟内输出结构化的事件影响评估报告，替代 1-3 小时手动工作。</p>
+    <div class="card-tags">
+      <span class="tag">传导链分析</span>
+      <span class="tag">地缘政治</span>
+      <span class="tag">实时评估</span>
+    </div>
+    <div class="card-meta">
+      <span>3 Personas</span>
+      <div class="meta-dot"></div>
+      <span>4 场景</span>
+      <div class="meta-dot"></div>
+      <span>3 用户故事</span>
+    </div>
+  </a>
+
+  <a class="card" href="smart-money-spread.html" style="--accent-color:#f59e0b">
+    <div class="card-header">
+      <div>
+        <div class="card-icon">💰</div>
+      </div>
+      <span class="card-arrow">↗</span>
+    </div>
+    <div>
+      <div class="card-title">智能资金价差监控器</div>
+      <div class="card-en">Smart Money Spread</div>
+    </div>
+    <p class="card-desc">计算"机构信念 vs 散户恐惧"实时价差（-100 到 +100），整合鲸鱼钱包积累、ETF 资金流、企业国库购入与情绪指数，输出量化背离分数。</p>
+    <div class="card-tags">
+      <span class="tag">机构 vs 散户</span>
+      <span class="tag">背离信号</span>
+      <span class="tag">实时价差</span>
+    </div>
+    <div class="card-meta">
+      <span>4 Personas</span>
+      <div class="meta-dot"></div>
+      <span>4 场景</span>
+      <div class="meta-dot"></div>
+      <span>4 用户故事</span>
+    </div>
+  </a>
+
+  <a class="card" href="v2-prediction-market-divergence-detector.html" style="--accent-color:#ec4899">
+    <div class="card-header">
+      <div>
+        <div class="card-icon">🔍</div>
+      </div>
+      <span class="card-arrow">↗</span>
+    </div>
+    <div>
+      <div class="card-title">预测市场赔率背离检测器 v2</div>
+      <div class="card-en">Prediction Market Divergence Detector</div>
+    </div>
+    <p class="card-desc">对比预测市场赔率与传统市场隐含概率，检测赔率变动是真实信息流还是低流动性大单操纵，输出综合可信度评分（1-10）。</p>
+    <div class="card-tags">
+      <span class="tag">操纵检测</span>
+      <span class="tag">多源校验</span>
+      <span class="tag">可信度评分</span>
+    </div>
+    <div class="card-meta">
+      <span>3 Personas</span>
+      <div class="meta-dot"></div>
+      <span>3 场景</span>
+      <div class="meta-dot"></div>
+      <span>3 用户故事</span>
+    </div>
+  </a>
+
+</div>
+
+<footer>
+  Auto Skills · PRD 可视化报告 · 2026-04-08 · 8 个技能，覆盖 DeFi 利差、风险评分、宏观传导与市场背离检测
+</footer>
+
+</body>
+</html>
